@@ -1,0 +1,89 @@
+{
+  "success": true,
+  "data": [
+    {
+      "subtitleId": 317884,
+      "movieId": 97027,
+      "language": "greek",
+      "releaseInfo": [
+        "The.Shawshank.Redemption.1994.1080p"
+      ],
+      "commentary": "PLEASE VOTE !!!",
+      "files": null,
+      "size": null,
+      "hearingImpaired": false,
+      "foreignParts": false,
+      "framerate": null,
+      "productionType": null,
+      "releaseType": null,
+      "downloads": 69,
+      "comments": 0,
+      "rating": {
+        "good": 0,
+        "bad": 0,
+        "total": 0
+      },
+      "preview": "[redacted]",
+      "uploaderId": 122629,
+      "contributors": [
+        {
+          "id": 122629,
+          "displayname": "[redacted]"
+        }
+      ],
+      "link": "/subtitle/the-shawshank-redemption-1994/greek/317884",
+      "createdAt": "2010-04-07T06:13:00.000Z"
+    },
+    {
+      "subtitleId": 176900,
+      "movieId": 97027,
+      "language": "greek",
+      "releaseInfo": [
+        "ShawshankRedemptionThe1994-Greek[Xsubt.com][3300594501]"
+      ],
+      "commentary": "",
+      "files": null,
+      "size": null,
+      "hearingImpaired": false,
+      "foreignParts": false,
+      "framerate": null,
+      "productionType": null,
+      "releaseType": null,
+      "downloads": 26,
+      "comments": 0,
+      "rating": {
+        "good": 0,
+        "bad": 0,
+        "total": 0
+      },
+      "preview": "[redacted]",
+      "uploaderId": 28961,
+      "contributors": [
+        {
+          "id": 28961,
+          "displayname": "[redacted]"
+        }
+      ],
+      "link": "/subtitle/the-shawshank-redemption-1994/greek/176900",
+      "createdAt": "2008-10-18T11:45:00.000Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 100,
+    "total": 2,
+    "pages": 1
+  },
+  "filters": {
+    "movieId": 97027,
+    "language": "greek",
+    "productionType": null,
+    "releaseType": null,
+    "uploader": null,
+    "hearingImpaired": null,
+    "foreignParts": null,
+    "framerate": null,
+    "releaseInfo": null,
+    "sort": "popular"
+  }
+}

@@ -1,0 +1,810 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f3f6f3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b100e" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%23060908'/%3E%3Crect x='6' y='19' width='20' height='3.4' rx='1.2' fill='%235fbf98'/%3E%3Crect x='9' y='24.4' width='14' height='3.4' rx='1.2' fill='%23eef3f0'/%3E%3C/svg%3E">
+<title>Greek Subs for Stremio</title>
+<style>
+  /* ============ tokens: dark = a cinema screen, light = a printed script; one accent, a deep cool green ============ */
+  :root {
+    --bg: #f3f6f3; --surface: #fbfcfa; --panel: #eef3ef; --field: #ffffff;
+    --ink: #13221b; --muted: #4a5c53; --line: #d2dcd5; --line-strong: #87998f;
+    --accent: #1d6b4f;            /* text, cue numbers, focus */
+    --fill: #1d6b4f; --fill-hover: #175a42; --fill-ink: #ffffff; --fill-edge: #13221b;
+    --ring: #1d6b4f; --danger: #a3221a; --danger-bg: #f8e3df;
+    --tint: #dcebe3; --tint-ink: #13221b;
+    --tl-bg: #e7eee9; --tl-block: #c3d3c9; --tl-hi: #7fa996;
+    /* the hero is the screen in both modes: the one dark frame on the page */
+    --screen: #050807; --screen-ink: #eef3f0; --screen-muted: #a9b8b0; --screen-line: #22302a; --screen-accent: #5fbf98; --screen-en: #cfdad4;
+    --mono: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b100e; --surface: #111916; --panel: #0e1512; --field: #080c0a;
+      --ink: #e5ece8; --muted: #a2b2aa; --line: #23302a; --line-strong: #4d5f57;
+      --accent: #5fbf98;
+      --fill: #1f7354; --fill-hover: #19654a; --fill-ink: #ffffff; --fill-edge: #3a9a74;
+      --ring: #5fbf98; --danger: #ff9a8c; --danger-bg: #2a1512;
+      --tint: #183026; --tint-ink: #e5ece8;
+      --tl-bg: #0e1512; --tl-block: #1c2a24; --tl-hi: #2c5a46;
+      --screen: #030504; --screen-line: #1f2b26;
+      color-scheme: dark;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; background: var(--bg); }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  [hidden] { display: none !important; }
+  main { max-width: 1240px; margin: 0 auto; padding: 28px 20px 26px; }
+  a { color: var(--accent); }
+
+  /* motion is opacity and transform only */
+  @keyframes cue { from { opacity: 0; } }
+  @keyframes blink { 50% { opacity: 0; } }
+  @keyframes fill { from { transform: scaleX(0); } }
+  @keyframes scroll { to { transform: translate3d(-50%, 0, 0); } }
+  .paused *, .paused *::before, .paused *::after { animation-play-state: paused !important; } /* tab hidden */
+
+  /* ============ hero: the screen; three cues play in the subtitle box ============ */
+  .hero {
+    position: relative; margin-bottom: 12px; padding: 30px 32px 34px;
+    background: var(--screen); color: var(--screen-ink); border: 1px solid var(--screen-line); border-radius: 8px;
+  }
+  .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 0 0 30px; padding-right: 110px; }
+  .credit { display: inline-block; padding: 2px 10px; border-radius: 4px; background: var(--screen-accent); color: #04110b; font-size: .8rem; font-weight: 700; letter-spacing: .02em; white-space: nowrap; }
+  .status { display: inline-flex; align-items: center; gap: 8px; margin: 0; font-size: .85rem; color: var(--screen-muted); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--screen-accent); }
+  .kicker { font-size: .85rem; color: var(--screen-muted); }
+  .kicker::before { content: "/"; margin-right: 16px; color: var(--screen-line); }
+
+  .cuebox { max-width: 900px; margin: 0 auto; text-align: center; }
+  h1 { margin: 0 0 20px; color: var(--screen-ink); font-weight: 750; line-height: 1.08; letter-spacing: -.015em; font-size: clamp(2.1rem, 5.6vw, 3.8rem); animation: cue .45s ease-out .1s backwards; }
+  .tc { margin: 0 0 12px; font: .85rem/1.4 var(--mono); color: var(--screen-muted); letter-spacing: .02em; animation: cue .4s ease-out .45s backwards; }
+  .cursor { display: inline-block; width: .55em; height: 1.05em; margin-left: .3em; vertical-align: -.18em; background: var(--screen-accent); animation: blink 1.1s steps(1) infinite; }
+
+  /* the three cues: a numbered list by default (and with reduced motion); stacked in one cell while playing */
+  .player { list-style: none; margin: 0 auto 24px; padding: 0; counter-reset: c; display: grid; gap: 12px; width: fit-content; max-width: 100%; text-align: left;
+    font-size: clamp(1.05rem, 2.3vw, 1.45rem); font-weight: 600; line-height: 1.75; animation: cue .4s ease-out .8s backwards; }
+  .player li { counter-increment: c; display: grid; grid-template-columns: 1.7em minmax(0, 1fr); align-items: baseline; }
+  .player li::before { content: counter(c); content: counter(c) / ""; font: 700 .85em var(--mono); color: var(--screen-accent); }
+  .lines span { display: inline; padding: .05em .45em; background: #000; text-shadow: 0 1px 2px #000; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+  .lines .el { color: var(--screen-ink); }
+  .lines .el::after { content: "\A"; white-space: pre; } /* one subtitle line each; a wrapped line keeps a box per line */
+  .lines .en { color: var(--screen-en); }
+  .playing .player { width: auto; gap: 0; text-align: center; }
+  .playing .player li { grid-area: 1 / 1; display: block; opacity: 0; transition: opacity .45s ease; }
+  .playing .player li.on { opacity: 1; }
+  .playing .player li::before { display: none; }
+  .lede { margin: 0 auto; max-width: 58ch; color: var(--screen-muted); animation: cue .5s ease-out 1.2s backwards; }
+
+  .lang { position: absolute; top: 24px; right: 24px; display: inline-flex; border: 1px solid var(--screen-line); border-radius: 5px; overflow: hidden; }
+  .lang button { padding: 3px 12px; border: 0; border-radius: 0; background: transparent; color: var(--screen-muted); font: 700 .78rem/1.5 var(--mono); letter-spacing: .06em; }
+  .lang button + button { border-left: 1px solid var(--screen-line); }
+  .lang button:hover { background: #121a17; color: var(--screen-ink); }
+  .lang button[aria-pressed="true"], .lang button[aria-pressed="true"]:hover { background: var(--screen-accent); color: #04110b; }
+  .lang button:focus-visible { outline-color: var(--screen-accent); outline-offset: 2px; }
+
+  /* ============ timeline strip under the hero: cue blocks slide past a fixed playhead ============ */
+  .timeline { position: relative; height: 30px; margin: 0 0 26px; overflow: hidden; background: var(--tl-bg); border: 1px solid var(--line); border-radius: 6px; }
+  .tl-track { display: flex; width: max-content; height: 100%; align-items: center; will-change: transform; animation: scroll 70s linear infinite; }
+  .tl-track i { flex: none; height: 14px; margin-right: 14px; border-radius: 3px; background: var(--tl-block); }
+  .tl-track i.hi { background: var(--tl-hi); }
+  .playhead { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; margin-left: -1px; background: var(--accent); }
+
+  /* ============ layout: one column; source cards in two columns from 1100 px ============ */
+  .cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 22px; align-items: stretch; }
+  .cards fieldset { margin-bottom: 18px; }
+  .card-ai { grid-column: 1 / -1; } /* the AI card is the widest: two keys side by side, then the explanation */
+  .aikeys { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 32px; }
+  .aikey { min-width: 0; }
+  .aititle { margin: 22px 0 8px; font-weight: 700; }
+  .aiinfo { margin: 0; padding: 12px 18px 12px 36px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--muted); font-size: .92rem; line-height: 1.55; }
+  .aiinfo li { margin: 4px 0; }
+
+  /* ============ cards: numbered cues, like an .srt file (number, timecode, then the text) ============ */
+  form { counter-reset: step; }
+  fieldset {
+    --pad-t: 20px; --pad-x: 24px; --num: 2.6rem;
+    position: relative; counter-increment: step; margin: 0 0 18px; padding: var(--pad-t) var(--pad-x) 24px; min-width: 0;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+  }
+  /* hover / focus: a green number and a green border fade in over the plain ones (opacity only) */
+  fieldset::before, fieldset::after { position: absolute; pointer-events: none; opacity: 0; transition: opacity .3s ease; }
+  fieldset::before { content: counter(step); content: counter(step) / ""; left: var(--pad-x); top: var(--pad-t); font: 700 var(--num)/.9 var(--mono); color: var(--accent); }
+  fieldset::after { content: ""; inset: -1px; border: 1px solid var(--accent); border-radius: inherit; }
+  fieldset:hover::before, fieldset:hover::after, fieldset:focus-within::before, fieldset:focus-within::after { opacity: 1; }
+  /* scroll reveal (only when the motion script runs): fade and rise a little, one after another */
+  .reveal .cards fieldset { transition: opacity .6s ease var(--d, 0ms), transform .6s cubic-bezier(.2, .7, .2, 1) var(--d, 0ms); }
+  .reveal .cards fieldset:not(.in) { opacity: 0; transform: translate3d(0, 16px, 0); }
+  legend {
+    float: left; width: 100%; padding: 0 0 14px; margin: 0 0 12px; border-bottom: 1px solid var(--line);
+    display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 16px; align-items: end;
+    font-size: 1.15rem; font-weight: 700; line-height: 1.3;
+  }
+  legend + * { clear: both; }
+  legend::before { /* cue number (decorative: the legend text is the name) */
+    content: counter(step); content: counter(step) / "";
+    grid-column: 1; grid-row: 1 / span 2; align-self: start; min-width: 1.1em; font: 700 var(--num)/.9 var(--mono); color: var(--muted);
+  }
+  legend::after { /* timecode */
+    content: attr(data-tc); content: attr(data-tc) / "";
+    grid-column: 2; grid-row: 1; font: 400 .76rem/1.5 var(--mono); color: var(--muted); letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .hint { color: var(--muted); font-size: .9rem; margin: 2px 0 10px; }
+  .soon { display: inline-block; margin-right: 6px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: 4px; font-size: .74rem; font-weight: 650; color: var(--muted); }
+  label.field { display: block; font-size: .9rem; font-weight: 600; margin: 14px 0 0; }
+  .row { display: flex; align-items: center; gap: 10px; margin: 8px 0 2px; }
+  .row label { cursor: pointer; }
+  input[type=text], input[type=password], input[type=number] {
+    display: block; width: 100%; height: 46px; margin-top: 5px; padding: 10px 13px; font: inherit; font-weight: 400; color: var(--ink);
+    background: var(--field); border: 1px solid var(--line-strong); border-radius: 6px;
+  }
+  input[type=text]:hover, input[type=password]:hover, input[type=number]:hover { border-color: var(--ink); }
+  input[type=text]:focus, input[type=password]:focus, input[type=number]:focus { border-color: var(--accent); }
+  input[type=checkbox] { width: 1.2rem; height: 1.2rem; margin: 0; accent-color: var(--accent); cursor: pointer; flex: none; }
+  input:focus-visible, button:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
+
+  /* ============ buttons: solid, the main one in the accent ============ */
+  button, .btn {
+    display: inline-block; font: inherit; font-weight: 650; cursor: pointer; text-decoration: none; text-align: center;
+    padding: 12px 22px; border: 1px solid var(--fill-edge); border-radius: 6px; background: var(--fill); color: var(--fill-ink);
+  }
+  button:hover, .btn:hover { background: var(--fill-hover); }
+  button.secondary, a.btn.secondary { background: transparent; color: var(--ink); border: 1px solid var(--line-strong); }
+  button.secondary:hover, a.btn.secondary:hover { background: var(--tint); color: var(--tint-ink); border-color: var(--ink); }
+  .formactions > button[type=submit] { padding: 14px 32px; font-size: 1.05rem; }
+  .err { color: var(--danger); margin-top: 12px; font-weight: 600; }
+  .err:empty { display: none; }
+  button:disabled { opacity: .6; cursor: progress; }
+
+  /* ============ result: a short render bar, then the final cue ============ */
+  #result { display: none; margin-top: 28px; padding: 22px 24px 24px; background: var(--surface); border: 1px solid var(--accent); border-radius: 8px; animation: cue .3s ease-out both; }
+  .render { height: 4px; margin: 0 0 18px; overflow: hidden; border-radius: 2px; background: var(--line); }
+  .render span { display: block; height: 100%; background: var(--accent); transform-origin: 0 50%; }
+  #result.play .render span { animation: fill .9s cubic-bezier(.45, 0, .25, 1) both; }
+  #result.play > :not(.render) { animation: cue .45s ease-out .9s backwards; }
+  #result.play .cuehead .done { animation: cue .4s ease-out 1.25s backwards; }
+  .cuehead { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 16px; align-items: end; margin: 0 0 14px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+  .cuehead .n { grid-row: 1 / span 2; font: 700 2.6rem/.9 var(--mono); color: var(--accent); }
+  .cuehead .ctc { font: .76rem/1.5 var(--mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cuehead .done { font: 700 1rem/1.4 var(--mono); color: var(--accent); letter-spacing: .02em; }
+  .cuehead .done::before { content: "\25A0  "; } /* small solid square, like an end-of-cue mark */
+  .ready p { margin: 0 0 6px; }
+  #manifest { font-family: var(--mono); font-size: .82rem; }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 14px; }
+  .testhead { margin: 20px 0 10px; }
+  .tests { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+  .tests a { display: inline-block; padding: 6px 14px; border: 1px solid var(--line-strong); border-radius: 6px; color: var(--ink); font-weight: 600; font-size: .92rem; text-decoration: none; }
+  .tests a::after { content: " \2197"; color: var(--accent); }
+  .tests a:hover { background: var(--tint); color: var(--tint-ink); border-color: var(--ink); }
+
+  /* ============ notice, optional markers, key links, guides ============ */
+  :root { --warn: #7a4a00; --warn-bg: #f6e7c8; }
+  @media (prefers-color-scheme: dark) { :root { --warn: #ffc56b; --warn-bg: #2a2010; } }
+  .notice { margin: 0 0 22px; padding: 14px 18px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 6px; background: var(--surface); animation: cue .45s ease-out .2s backwards; }
+  .notice p { margin: 0; }
+  .opt { display: inline-block; margin-left: 8px; padding: 0 7px; border: 1px solid var(--line); border-radius: 4px; font: 400 .72rem/1.6 var(--mono); color: var(--muted); vertical-align: 1px; }
+  .keyrow { margin: 12px 0 0; }
+  .btn.small { padding: 7px 14px; font-size: .86rem; }
+  a.btn.small::after { content: " \2197"; color: var(--accent); }
+  details.guide { margin: 12px 0 0; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); }
+  details.guide summary { cursor: pointer; padding: 8px 12px; font-size: .9rem; font-weight: 650; color: var(--ink); list-style: none; border-radius: 6px; }
+  details.guide summary::-webkit-details-marker { display: none; }
+  details.guide summary::before { content: "\25B8"; display: inline-block; width: 1.1em; color: var(--accent); transition: transform .2s ease; }
+  details.guide[open] summary::before { transform: rotate(90deg); }
+  details.guide ol { margin: 0; padding: 0 14px 6px 34px; font-size: .9rem; }
+  details.guide li { margin: 5px 0; }
+  details.guide .fine { margin: 0; padding: 0 14px 12px 14px; font-size: .8rem; color: var(--muted); }
+
+  /* ============ form actions + key test results ============ */
+  .formactions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 8px; }
+  .formactions > button { margin-top: 0; }
+  .testout { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 8px; }
+  .testout li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 10px 14px; border-radius: 6px; background: var(--surface); border: 1px solid var(--line); animation: cue .35s ease-out backwards; }
+  .testout .pname { min-width: 8.5em; font-weight: 700; }
+  .testout .ptext { flex: 1 1 14em; min-width: 0; font-size: .92rem; color: var(--muted); }
+  .badge { flex: none; padding: 1px 10px; border-radius: 4px; font: 700 .76rem/1.6 var(--mono); border: 1px solid transparent; }
+  .badge.ok { background: var(--fill); color: var(--fill-ink); border-color: var(--fill-edge); }
+  .badge.bad { background: var(--danger-bg); color: var(--danger); border-color: currentColor; }
+  .badge.warn { background: var(--warn-bg); color: var(--warn); border-color: currentColor; }
+  .badge.off { background: transparent; color: var(--muted); border-color: var(--line-strong); }
+  .testout li.testmsg { margin-top: 0; color: var(--muted); }
+
+  /* ============ privacy note ============ */
+  .privacy { display: flex; gap: 14px; align-items: flex-start; margin: 28px 0 0; padding: 14px 18px; border: 1px solid var(--line); border-radius: 6px; color: var(--muted); font-size: .92rem; }
+  .privacy svg { flex: none; width: 22px; height: 22px; margin-top: 1px; color: var(--accent); }
+  .privacy p { margin: 0; }
+  .privacy strong { color: var(--ink); }
+
+  /* ============ footer: end credits ============ */
+  footer { max-width: 1240px; margin: 0 auto; padding: 8px 20px 44px; text-align: center; color: var(--muted); font-size: .9rem; }
+  footer p { margin: 0; }
+  .rule { display: block; width: min(240px, 60%); height: 1px; margin: 6px auto 16px; background: var(--line-strong); }
+
+  /* ============ wide screens ============ */
+  @media (min-width: 1100px) {
+    main { padding: 36px 32px 26px; }
+    .hero { padding: 34px 48px 40px; }
+    .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 24px; }
+    .card-os { grid-row: span 2; }
+    .aikeys { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (min-width: 1600px) {
+    main { max-width: 1560px; padding-left: 44px; padding-right: 44px; }
+    .hero { padding: 40px 64px 46px; }
+    .cards { gap: 0 32px; }
+  }
+  @media (min-width: 2200px) {
+    main { max-width: 2060px; }
+    .hero { padding: 48px 80px 54px; }
+  }
+  @media (max-width: 560px) {
+    main { padding: 16px 12px 20px; }
+    .hero { padding: 64px 18px 24px; }
+    .meta { padding-right: 0; margin-bottom: 26px; }
+    .kicker::before { display: none; }
+    .lang { top: 16px; right: 16px; }
+    .tc { font-size: .74rem; }
+    fieldset { --pad-t: 16px; --pad-x: 16px; --num: 2.1rem; padding-bottom: 20px; }
+    .cuehead .n { font-size: 2.1rem; }
+    .formactions > button, .actions > * { width: 100%; }
+    #result { padding: 18px 16px 20px; }
+    .notice, .privacy { padding: 12px 14px; }
+    footer { padding: 8px 12px 32px; }
+  }
+
+  /* ============ reduced motion: nothing moves, fades or blinks; the cues are a plain list ============ */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header class="hero">
+    <div class="lang" id="langsw" role="group" data-i18n-aria="langLabel">
+      <button type="button" data-lang="el" aria-pressed="false" lang="el">EL</button>
+      <button type="button" data-lang="en" aria-pressed="false" lang="en">EN</button>
+    </div>
+    <div class="meta">
+      <span class="credit">Made by MayBe</span>
+      <p class="status"><span class="dot" aria-hidden="true"></span><span data-i18n="status">Server online</span></p>
+      <span class="kicker" data-i18n="kicker">Greek subtitles</span>
+    </div>
+    <div class="cuebox">
+      <h1>Greek Subs for Stremio</h1>
+      <p class="tc" aria-hidden="true"><span class="time">00:00:01,000 --&gt; 00:00:10,000</span><span class="cursor"></span></p>
+      <ol class="player">
+        <li data-tc="00:00:01,000 --> 00:00:04,000"><span class="lines"><span class="el" lang="el">Πρόσθεσε τα κλειδιά API σου.</span><span class="en" lang="en">Add your API keys.</span></span></li>
+        <li data-tc="00:00:04,000 --> 00:00:07,000"><span class="lines"><span class="el" lang="el">Δημιούργησε τον σύνδεσμο.</span><span class="en" lang="en">Create the link.</span></span></li>
+        <li data-tc="00:00:07,000 --> 00:00:10,000"><span class="lines"><span class="el" lang="el">Βάλτο στο Stremio.</span><span class="en" lang="en">Put it in Stremio.</span></span></li>
+      </ol>
+      <p class="lede" data-i18n="lede">Searches several subtitle sources at once, removes duplicates and shows the best Greek matches first.</p>
+    </div>
+  </header>
+  <div class="timeline" aria-hidden="true"><div class="tl-track"></div><span class="playhead"></span></div>
+
+  <aside class="notice" role="note">
+    <p><strong data-i18n="noticeTitle">No keys needed.</strong> <span data-i18n="noticeText">GreekSubs.net works on its own, so you can create your link right away. Keys are optional: each one you add brings in another source and more subtitles to choose from.</span></p>
+  </aside>
+
+  <form id="f">
+    <div class="cards">
+      <fieldset class="card-os">
+        <legend data-tc="00:00:05,000 --> 00:00:09,000">OpenSubtitles</legend>
+        <div class="hint" data-i18n="osHint">Free account: 20 downloads a day.</div>
+        <label class="field"><span data-i18n="apiKey">API key</span><em class="opt" data-i18n="optional">optional</em> <input type="password" name="os_key" autocomplete="off"></label>
+        <div class="keyrow"><a class="btn secondary small" href="https://www.opensubtitles.com/en/consumers" target="_blank" rel="noopener noreferrer" data-i18n="getKey">Get your key</a></div>
+        <details class="guide">
+          <summary data-i18n="guideTitle">How to get the key</summary>
+          <ol>
+            <li data-i18n="osG1">Log in (or sign up) on opensubtitles.com, then open the API consumers page with the button above.</li>
+            <li data-i18n="osG2">Create a new consumer. Give it a unique name using only letters and digits.</li>
+            <li data-i18n="osG3">Leave “Allow anonymous downloads” ticked and save.</li>
+            <li data-i18n="osG4">Copy the key and paste it into the API key field.</li>
+            <li data-i18n="osG5">Also enter your opensubtitles.com username and password below: that is what gives you 20 downloads a day.</li>
+          </ol>
+          <p class="fine" data-i18n="guideFine">The screen may look slightly different.</p>
+        </details>
+        <label class="field"><span data-i18n="username">Username</span><em class="opt" data-i18n="optional">optional</em> <input type="text" name="os_user" autocomplete="off"></label>
+        <label class="field"><span data-i18n="password">Password</span><em class="opt" data-i18n="optional">optional</em> <input type="password" name="os_pass" autocomplete="off"></label>
+      </fieldset>
+
+      <fieldset>
+        <legend data-tc="00:00:10,000 --> 00:00:13,000">SubDL</legend>
+        <div class="hint" data-i18n="subdlHint">Free key from your SubDL account. Includes the old Subscene archive.</div>
+        <label class="field"><span data-i18n="apiKey">API key</span><em class="opt" data-i18n="optional">optional</em> <input type="password" name="subdl_key" autocomplete="off"></label>
+        <div class="keyrow"><a class="btn secondary small" href="https://subdl.com/panel/api" target="_blank" rel="noopener noreferrer" data-i18n="getKey">Get your key</a></div>
+        <p class="hint" data-i18n="subdlKeyHint">Log in, then copy the key shown on that page.</p>
+      </fieldset>
+
+      <fieldset>
+        <legend data-tc="00:00:14,000 --> 00:00:17,000">SubSource</legend>
+        <div class="hint" data-i18n="subsourceHint">Free key from your SubSource account.</div>
+        <label class="field"><span data-i18n="apiKey">API key</span><em class="opt" data-i18n="optional">optional</em> <input type="password" name="subsource_key" autocomplete="off"></label>
+        <div class="keyrow"><a class="btn secondary small" href="https://subsource.net/dashboard/profile" target="_blank" rel="noopener noreferrer" data-i18n="getKey">Get your key</a></div>
+        <details class="guide">
+          <summary data-i18n="guideTitle">How to get the key</summary>
+          <ol>
+            <li data-i18n="ssG1">Log in (or sign up) at subsource.net.</li>
+            <li data-i18n="ssG2">Open Settings from your profile menu.</li>
+            <li data-i18n="ssG3">Go to the API tab and create or copy your key.</li>
+          </ol>
+          <p class="fine" data-i18n="guideFine">The screen may look slightly different.</p>
+        </details>
+      </fieldset>
+
+      <fieldset class="card-ai">
+        <legend data-tc="00:00:18,000 --> 00:00:24,000" data-i18n="aiLegend">AI translation (optional)</legend>
+        <div class="hint" data-i18n="aiHint">Optional. When the sources in your link find no Greek subtitle, the add-on can translate the English one with AI, using your own free keys.</div>
+        <div class="aikeys">
+          <div class="aikey">
+            <label class="field"><span data-i18n="deeplLabel">DeepL API key</span><em class="opt" data-i18n="optional">optional</em> <input type="password" name="deepl_key" autocomplete="off"></label>
+            <div class="keyrow"><a class="btn secondary small" href="https://www.deepl.com/en/your-account/keys" target="_blank" rel="noopener noreferrer" data-i18n="getKey">Get your key</a></div>
+            <details class="guide">
+              <summary data-i18n="guideTitle">How to get the key</summary>
+              <ol>
+                <li data-i18n="dlG1">Sign up for “DeepL API Free” on deepl.com (it is a separate plan from the DeepL app).</li>
+                <li data-i18n="dlG2">Open Account, then the API Keys tab.</li>
+                <li data-i18n="dlG3">Copy the key and paste it into the field.</li>
+              </ol>
+              <p class="fine" data-i18n="dlFine">The free plan has a monthly character limit, shown in your account. One episode uses about 30,000 characters.</p>
+              <p class="fine" data-i18n="guideFine">The screen may look slightly different.</p>
+            </details>
+          </div>
+          <div class="aikey">
+            <label class="field"><span data-i18n="geminiLabel">Gemini API key</span><em class="opt" data-i18n="optional">optional</em> <input type="password" name="gemini_key" autocomplete="off"></label>
+            <div class="keyrow"><a class="btn secondary small" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" data-i18n="getKey">Get your key</a></div>
+            <details class="guide">
+              <summary data-i18n="guideTitle">How to get the key</summary>
+              <ol>
+                <li data-i18n="gmG1">Sign in to Google AI Studio with your Google account.</li>
+                <li data-i18n="gmG2">Press “Create API key”.</li>
+                <li data-i18n="gmG3">Copy the key and paste it into the field.</li>
+              </ol>
+              <p class="fine" data-i18n="gmFine">The free tier allows only a few episodes a day.</p>
+              <p class="fine" data-i18n="guideFine">The screen may look slightly different.</p>
+            </details>
+          </div>
+        </div>
+        <p class="aititle" data-i18n="aiHowTitle">How AI translation works</p>
+        <ul class="aiinfo">
+          <li data-i18n="aiW1">It runs only when no Greek subtitle exists on any source, and it uses your own keys.</li>
+          <li data-i18n="aiW2">The result is labelled AI (in the first line of the file and in the entry name) and may contain errors.</li>
+          <li data-i18n="aiW3">Finished translations are shared with other users of this add-on, and are removed when a human Greek subtitle appears.</li>
+          <li data-i18n="aiW4">The first time, you may see a “translation in progress” line instead of subtitles. Pick the subtitle again after a minute.</li>
+          <li data-i18n="aiW5">The file is made for one version of the video and can be out of sync with others. Use Stremio’s subtitle delay to fix it.</li>
+          <li data-i18n="aiW6">The English subtitles are sent to DeepL and Google to be translated. Google may use free-tier content to improve its products. For private use only.</li>
+        </ul>
+      </fieldset>
+
+      <fieldset>
+        <legend data-tc="00:00:25,000 --> 00:00:28,000" data-i18n="greekLegend">Greek sites</legend>
+        <div class="row"><input type="checkbox" id="gs" name="gs" checked><label for="gs" data-i18n="gsLabel">GreekSubs.net (no key needed)</label></div>
+      </fieldset>
+
+      <fieldset>
+        <legend data-tc="00:00:29,000 --> 00:00:31,000" data-i18n="resultsLegend">Results</legend>
+        <label class="field"><span data-i18n="maxLabel">Maximum subtitles shown</span> <input type="number" name="max" min="1" max="40" value="20"></label>
+      </fieldset>
+    </div>
+
+    <div class="formactions">
+      <button type="submit" data-i18n="create">Create install link</button>
+      <button type="button" class="secondary" id="testkeys" data-i18n="testKeys">Test my keys</button>
+    </div>
+    <ul id="testout" class="testout" aria-live="polite" hidden></ul>
+    <div id="error" class="err" role="alert"></div>
+  </form>
+
+  <section id="result" aria-live="polite">
+    <div class="render" aria-hidden="true"><span></span></div>
+    <p class="cuehead"><span class="n" aria-hidden="true">7</span><span class="ctc" aria-hidden="true">00:00:32,000 --&gt; 00:00:36,000</span><span class="done" data-i18n="cueDone">Done</span></p>
+    <div class="ready">
+      <p><strong data-i18n="readyTitle">Your link is ready.</strong> <span data-i18n="readyText">Anyone with this link can use your keys, so share it only with people you trust.</span></p>
+    </div>
+    <p class="hint" id="localnote" hidden data-i18n="localNote">Local test: paste the link below into Stremio’s Addons search box.</p>
+    <input type="text" id="manifest" readonly>
+    <div class="actions">
+      <a class="btn" id="install" href="#" data-i18n="install">Install in Stremio</a>
+      <button type="button" class="secondary" id="copy" data-i18n="copy">Copy link for Addons search box</button>
+    </div>
+    <p class="hint" id="copyhint" data-i18n="copyHint">To install manually, copy the plain http link and paste it into the search box on Stremio’s Addons page.</p>
+    <p class="hint testhead"><strong data-i18n="testLinkTitle">Test your link</strong> <span data-i18n="testLinkText">(opens a new tab with the raw results)</span></p>
+    <ul id="tests" class="tests">
+      <li><a target="_blank" rel="noopener noreferrer" data-path="/subtitles/movie/tt0133093.json">The Matrix</a></li>
+      <li><a target="_blank" rel="noopener noreferrer" data-path="/subtitles/movie/tt0111161.json">The Shawshank Redemption</a></li>
+      <li><a target="_blank" rel="noopener noreferrer" data-path="/subtitles/series/tt0944947:1:2.json">Game of Thrones S1E2</a></li>
+    </ul>
+  </section>
+
+  <aside class="privacy" role="note">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10.5" width="16" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></svg>
+    <p><strong data-i18n="privacyTitle">Privacy.</strong> <span data-i18n="privacyText">Your keys are encrypted inside your install link and are not stored on the server. Anyone who has your link can use your keys, so don’t share it.</span></p>
+  </aside>
+</main>
+
+<footer>
+  <span class="rule" aria-hidden="true"></span>
+  <p>Made by MayBe</p>
+</footer>
+
+<script>
+// ---------- language: Greek / English, no external resources ----------
+const I18N = {
+  en: {
+    title: 'Greek Subs for Stremio', langLabel: 'Language',
+    status: 'Server online', kicker: 'Greek subtitles',
+    lede: 'Searches several subtitle sources at once, removes duplicates and shows the best Greek matches first.',
+    noticeTitle: 'No keys needed.',
+    noticeText: 'GreekSubs.net works on its own, so you can create your link right away. Keys are optional: each one you add brings in another source (OpenSubtitles, SubDL, SubSource) and more subtitles to choose from.',
+    optional: 'optional', apiKey: 'API key', username: 'Username', password: 'Password', getKey: 'Get your key',
+    osHint: 'Free account: 20 downloads a day.',
+    guideTitle: 'How to get the key', guideFine: 'The screen may look slightly different.',
+    osG1: 'Log in (or sign up) on opensubtitles.com, then open the API consumers page with the button above.',
+    osG2: 'Create a new consumer. Give it a unique name using only letters and digits.',
+    osG3: 'Leave “Allow anonymous downloads” ticked and save.',
+    osG4: 'Copy the key and paste it into the API key field.',
+    osG5: 'Also enter your opensubtitles.com username and password below: that is what gives you 20 downloads a day.',
+    subdlHint: 'Free key from your SubDL account. Includes the old Subscene archive.', subdlKeyHint: 'Log in, then copy the key shown on that page.',
+    subsourceHint: 'Free key from your SubSource account.',
+    ssG1: 'Log in (or sign up) at subsource.net.', ssG2: 'Open Settings from your profile menu.', ssG3: 'Go to the API tab and create or copy your key.',
+    aiLegend: 'AI translation (optional)',
+    aiHint: 'Optional. When the sources in your link find no Greek subtitle, the add-on can translate the English one with AI, using your own free keys.',
+    deeplLabel: 'DeepL API key', geminiLabel: 'Gemini API key',
+    dlG1: 'Sign up for “DeepL API Free” on deepl.com (it is a separate plan from the DeepL app).', dlG2: 'Open Account, then the API Keys tab.', dlG3: 'Copy the key and paste it into the field.',
+    dlFine: 'The free plan has a monthly character limit, shown in your account. One episode uses about 30,000 characters.',
+    gmG1: 'Sign in to Google AI Studio with your Google account.', gmG2: 'Press “Create API key”.', gmG3: 'Copy the key and paste it into the field.',
+    gmFine: 'The free tier allows only a few episodes a day.',
+    aiHowTitle: 'How AI translation works',
+    aiW1: 'It runs only when none of the sources enabled in your link has a Greek subtitle, and it uses your own keys.',
+    aiW2: 'The result is labelled AI (in the first line of the file and in the entry name) and may contain errors.',
+    aiW3: 'Finished translations are shared with other users of this add-on, and are removed the next time the add-on finds a Greek subtitle for that title.',
+    aiW4: 'The first time, you may see a “translation in progress” line or a draft. Pick the subtitle again after a minute for a better version.',
+    aiW5: 'The file is made for one version of the video and can be out of sync with others. Use Stremio’s subtitle delay to fix it.',
+    aiW6: 'The English subtitles are sent only to the services whose key you entered (DeepL and/or Google) to be translated. Google may use free-tier content to improve its products. For private use only.',
+    badAiKey: 'The {field} key has characters that are not allowed (spaces, line breaks or symbols). Copy only the key itself.',
+    okChars: '{used} of {limit} characters used this month.',
+    quotaMonthly: 'Your monthly DeepL characters are used up. Until next month the add-on uses only Gemini (if you added a key).',
+    limitMsg: 'Too many requests right now. Try again in a minute.',
+    greekLegend: 'Greek sites', gsLabel: 'GreekSubs.net (no key needed)',
+    resultsLegend: 'Results', maxLabel: 'Maximum subtitles shown',
+    create: 'Create install link', testKeys: 'Test my keys', testing: 'Testing…',
+    testNone: 'Enter at least one key to test it.', testFailed: 'The test could not run. Try again.',
+    stOk: 'Working', stBadKey: 'Wrong key', stBadLogin: 'Wrong login', stQuota: 'Limit reached', stDown: 'Unreachable', stLimit: 'Slow down',
+    okSimple: 'The key was accepted.', okLogin: 'Key and login work.',
+    okLeft: '{n} of {total} downloads left today.',
+    okNoLogin: 'The key works. Add your username and password to get 20 downloads a day.',
+    badKey: 'Wrong key. Check that you copied all of it.',
+    badLogin: 'The key works, but the username or password is wrong.',
+    quotaDaily: 'Daily download limit reached. It resets at midnight UTC.',
+    quotaRate: 'Too many requests right now. Try again in a minute.',
+    unreachable: 'Could not reach the site. Try again later.',
+    rateLimited: 'Too many attempts. Please wait {n} seconds and try again.',
+    createFail: 'Could not create the link: {m} Check that the server is running and try again.', rejected: 'The server rejected the settings.',
+    cueDone: 'Done',
+    readyTitle: 'Your link is ready.', readyText: 'Anyone with this link can use your keys, so share it only with people you trust.',
+    localNote: 'Local test: paste the link below into Stremio’s Addons search box.',
+    install: 'Install in Stremio', copy: 'Copy link for Addons search box', copied: 'Copied', pressCtrl: 'Press Ctrl+C',
+    copyHint: 'To install manually, copy the plain http link and paste it into the search box on Stremio’s Addons page.',
+    testLinkTitle: 'Test your link', testLinkText: '(opens a new tab with the raw results)',
+    privacyTitle: 'Privacy.', privacyText: 'Your keys are encrypted inside your install link and are not stored on the server. Anyone who has your link can use your keys, so don’t share it.',
+  },
+  el: {
+    title: 'Greek Subs για το Stremio', langLabel: 'Γλώσσα',
+    status: 'Ο διακομιστής λειτουργεί', kicker: 'Ελληνικοί υπότιτλοι',
+    lede: 'Ψάχνει σε πολλές πηγές υποτίτλων ταυτόχρονα, αφαιρεί τα διπλότυπα και δείχνει πρώτους τους καλύτερους ελληνικούς υπότιτλους.',
+    noticeTitle: 'Δεν χρειάζεσαι κλειδιά.',
+    noticeText: 'Το GreekSubs.net δουλεύει μόνο του, οπότε μπορείς να φτιάξεις τον σύνδεσμό σου αμέσως. Τα κλειδιά είναι προαιρετικά: κάθε κλειδί που προσθέτεις ανοίγει μια ακόμη πηγή (OpenSubtitles, SubDL, SubSource) και σου δίνει περισσότερους υποτίτλους να διαλέξεις.',
+    optional: 'προαιρετικό', apiKey: 'Κλειδί API', username: 'Όνομα χρήστη', password: 'Κωδικός', getKey: 'Πάρε το κλειδί σου',
+    osHint: 'Δωρεάν λογαριασμός: 20 λήψεις την ημέρα.',
+    guideTitle: 'Πώς θα βρεις το κλειδί', guideFine: 'Η οθόνη μπορεί να φαίνεται λίγο διαφορετική.',
+    osG1: 'Συνδέσου (ή κάνε εγγραφή) στο opensubtitles.com και άνοιξε τη σελίδα API consumers με το κουμπί πιο πάνω.',
+    osG2: 'Δημιούργησε έναν νέο consumer. Δώσε του ένα μοναδικό όνομα μόνο με γράμματα και ψηφία.',
+    osG3: 'Άφησε τικαρισμένο το «Allow anonymous downloads» και πάτα αποθήκευση.',
+    osG4: 'Αντίγραψε το κλειδί και κόλλησέ το στο πεδίο «Κλειδί API».',
+    osG5: 'Συμπλήρωσε και το όνομα χρήστη και τον κωδικό σου στο opensubtitles.com πιο κάτω: αυτά σου δίνουν 20 λήψεις την ημέρα.',
+    subdlHint: 'Δωρεάν κλειδί από τον λογαριασμό σου στο SubDL. Περιλαμβάνει το παλιό αρχείο του Subscene.', subdlKeyHint: 'Συνδέσου και αντίγραψε το κλειδί που εμφανίζεται σε εκείνη τη σελίδα.',
+    subsourceHint: 'Δωρεάν κλειδί από τον λογαριασμό σου στο SubSource.',
+    ssG1: 'Συνδέσου (ή κάνε εγγραφή) στο subsource.net.', ssG2: 'Άνοιξε τις Ρυθμίσεις (Settings) από το μενού του προφίλ σου.', ssG3: 'Πήγαινε στην καρτέλα API και δημιούργησε ή αντίγραψε το κλειδί σου.',
+    aiLegend: 'Μετάφραση με AI (προαιρετικό)',
+    aiHint: 'Προαιρετικό. Όταν οι πηγές σου δεν βρίσκουν ελληνικό υπότιτλο, το πρόσθετο μπορεί να μεταφράσει τον αγγλικό με AI, με τα δικά σου δωρεάν κλειδιά.',
+    deeplLabel: 'Κλειδί API του DeepL', geminiLabel: 'Κλειδί API του Gemini',
+    dlG1: 'Κάνε εγγραφή στο «DeepL API Free» στο deepl.com (είναι ξεχωριστό πακέτο από την εφαρμογή DeepL).', dlG2: 'Άνοιξε το Account και μετά την καρτέλα API Keys.', dlG3: 'Αντίγραψε το κλειδί και κόλλησέ το στο πεδίο.',
+    dlFine: 'Το δωρεάν πακέτο έχει μηνιαίο όριο χαρακτήρων, που φαίνεται στον λογαριασμό σου. Ένα επεισόδιο χρησιμοποιεί περίπου 30.000 χαρακτήρες.',
+    gmG1: 'Συνδέσου στο Google AI Studio με τον λογαριασμό σου στο Google.', gmG2: 'Πάτα «Create API key».', gmG3: 'Αντίγραψε το κλειδί και κόλλησέ το στο πεδίο.',
+    gmFine: 'Το δωρεάν πακέτο επιτρέπει μόνο λίγα επεισόδια την ημέρα.',
+    aiHowTitle: 'Πώς λειτουργεί η μετάφραση με AI',
+    aiW1: 'Τρέχει μόνο όταν καμία από τις πηγές που έχεις ενεργοποιήσει στον σύνδεσμό σου δεν έχει ελληνικό υπότιτλο, και χρησιμοποιεί τα δικά σου κλειδιά.',
+    aiW2: 'Το αποτέλεσμα έχει την ένδειξη AI (στην πρώτη γραμμή του αρχείου και στο όνομα του υπότιτλου στη λίστα) και μπορεί να έχει λάθη.',
+    aiW3: 'Οι ολοκληρωμένες μεταφράσεις μοιράζονται με άλλους χρήστες αυτού του πρόσθετου και διαγράφονται την επόμενη φορά που το πρόσθετο θα βρει ελληνικό υπότιτλο για τον τίτλο.',
+    aiW4: 'Την πρώτη φορά μπορεί να δεις μια γραμμή «μετάφραση σε εξέλιξη» ή ένα πρόχειρο. Διάλεξε ξανά τον υπότιτλο μετά από ένα λεπτό για καλύτερη έκδοση.',
+    aiW5: 'Το αρχείο φτιάχνεται για μία έκδοση του βίντεο και μπορεί να μην ταιριάζει χρονικά με άλλες. Χρησιμοποίησε την καθυστέρηση υποτίτλων του Stremio για να το διορθώσεις.',
+    aiW6: 'Οι αγγλικοί υπότιτλοι στέλνονται για μετάφραση μόνο στις υπηρεσίες των οποίων έβαλες κλειδί (DeepL ή/και Google). Η Google μπορεί να χρησιμοποιεί περιεχόμενο του δωρεάν πακέτου για να βελτιώνει τα προϊόντα της. Μόνο για προσωπική χρήση.',
+    badAiKey: 'Το κλειδί {field} έχει χαρακτήρες που δεν επιτρέπονται (κενά, αλλαγές γραμμής ή σύμβολα). Αντίγραψε μόνο το ίδιο το κλειδί.',
+    okChars: 'Χρησιμοποίησες {used} από {limit} χαρακτήρες αυτόν τον μήνα.',
+    quotaMonthly: 'Οι μηνιαίοι χαρακτήρες σου στο DeepL τελείωσαν. Μέχρι τον επόμενο μήνα το πρόσθετο χρησιμοποιεί μόνο το Gemini (αν έβαλες κλειδί).',
+    limitMsg: 'Πάρα πολλά αιτήματα αυτή τη στιγμή. Δοκίμασε ξανά σε ένα λεπτό.',
+    greekLegend: 'Ελληνικά sites', gsLabel: 'GreekSubs.net (δεν θέλει κλειδί)',
+    resultsLegend: 'Αποτελέσματα', maxLabel: 'Μέγιστος αριθμός υποτίτλων',
+    create: 'Δημιουργία συνδέσμου εγκατάστασης', testKeys: 'Έλεγχος κλειδιών', testing: 'Γίνεται έλεγχος…',
+    testNone: 'Γράψε τουλάχιστον ένα κλειδί για να το ελέγξουμε.', testFailed: 'Ο έλεγχος δεν ολοκληρώθηκε. Δοκίμασε ξανά.',
+    stOk: 'Λειτουργεί', stBadKey: 'Λάθος κλειδί', stBadLogin: 'Λάθος σύνδεση', stQuota: 'Έφτασε το όριο', stDown: 'Μη διαθέσιμο', stLimit: 'Περίμενε λίγο',
+    okSimple: 'Το κλειδί έγινε δεκτό.', okLogin: 'Το κλειδί και η σύνδεση λειτουργούν.',
+    okLeft: 'Απομένουν {n} από {total} λήψεις σήμερα.',
+    okNoLogin: 'Το κλειδί λειτουργεί. Πρόσθεσε όνομα χρήστη και κωδικό για 20 λήψεις την ημέρα.',
+    badKey: 'Λάθος κλειδί. Έλεγξε ότι το αντέγραψες ολόκληρο.',
+    badLogin: 'Το κλειδί λειτουργεί, αλλά το όνομα χρήστη ή ο κωδικός είναι λάθος.',
+    quotaDaily: 'Έφτασες το ημερήσιο όριο λήψεων. Ανανεώνεται τα μεσάνυχτα UTC.',
+    quotaRate: 'Πάρα πολλά αιτήματα αυτή τη στιγμή. Δοκίμασε ξανά σε ένα λεπτό.',
+    unreachable: 'Δεν έγινε σύνδεση με την υπηρεσία. Δοκίμασε ξανά αργότερα.',
+    rateLimited: 'Πάρα πολλές προσπάθειες. Περίμενε {n} δευτερόλεπτα και δοκίμασε ξανά.',
+    createFail: 'Δεν δημιουργήθηκε ο σύνδεσμος: {m} Βεβαιώσου ότι ο διακομιστής λειτουργεί και δοκίμασε ξανά.', rejected: 'Ο διακομιστής απέρριψε τις ρυθμίσεις.',
+    cueDone: 'Έτοιμο',
+    readyTitle: 'Ο σύνδεσμός σου είναι έτοιμος.', readyText: 'Όποιος έχει αυτόν τον σύνδεσμο μπορεί να χρησιμοποιήσει τα κλειδιά σου, γι’ αυτό μοιράσου τον μόνο με άτομα που εμπιστεύεσαι.',
+    localNote: 'Τοπική δοκιμή: κόλλησε τον παρακάτω σύνδεσμο στο πεδίο αναζήτησης των Add-ons του Stremio.',
+    install: 'Εγκατάσταση στο Stremio', copy: 'Αντιγραφή συνδέσμου για το πεδίο αναζήτησης των Add-ons', copied: 'Αντιγράφηκε', pressCtrl: 'Πάτα Ctrl+C',
+    copyHint: 'Για χειροκίνητη εγκατάσταση, αντίγραψε τον απλό σύνδεσμο http και κόλλησέ τον στο πεδίο αναζήτησης της σελίδας Add-ons του Stremio.',
+    testLinkTitle: 'Δοκίμασε τον σύνδεσμό σου', testLinkText: '(ανοίγει νέα καρτέλα με τα ακατέργαστα αποτελέσματα)',
+    privacyTitle: 'Απόρρητο.', privacyText: 'Τα κλειδιά σου κρυπτογραφούνται μέσα στον σύνδεσμο εγκατάστασης και δεν αποθηκεύονται στον διακομιστή. Όποιος έχει τον σύνδεσμό σου μπορεί να χρησιμοποιήσει τα κλειδιά σου, γι’ αυτό μην τον μοιράζεσαι.',
+  },
+};
+const store = {
+  get() { try { return localStorage.getItem('lang'); } catch { return null; } },
+  set(v) { try { localStorage.setItem('lang', v); } catch { /* private mode: the choice just is not remembered */ } },
+};
+let lang = store.get();
+if (lang !== 'el' && lang !== 'en') lang = /^el\b/i.test((navigator.languages && navigator.languages[0]) || navigator.language || '') ? 'el' : 'en';
+const t = (k, vars) => (I18N[lang][k] ?? I18N.en[k] ?? k).replace(/\{(\w+)\}/g, (_, v) => (vars && vars[v] != null ? vars[v] : ''));
+
+let copyFlash = false; // the copy button briefly shows "Copied"
+function applyLang() {
+  document.documentElement.lang = lang;
+  document.title = t('title');
+  document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-aria]').forEach((el) => el.setAttribute('aria-label', t(el.dataset.i18nAria)));
+  document.querySelectorAll('#langsw button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
+  if (!copyFlash) document.getElementById('copy').textContent = t('copy');
+  renderTest();
+  renderError();
+}
+document.querySelectorAll('#langsw button').forEach((b) => b.addEventListener('click', () => {
+  lang = b.dataset.lang;
+  store.set(lang);
+  applyLang();
+}));
+
+// ---------- form ----------
+const f = document.getElementById('f');
+const val = (n) => f.elements[n].value.trim();
+const $ = (id) => document.getElementById(id);
+
+// An error shown to the person: kept as a dictionary key + values so it re-translates when the language is switched.
+class UserError extends Error { constructor(key, vars) { super(key); this.key = key; this.vars = vars; } }
+let lastError = null; // { key, vars }
+function renderError() {
+  const e = lastError;
+  $('error').textContent = !e ? '' : e.key === 'createFail' ? t('createFail', { m: e.vars.mKey ? t(e.vars.mKey) : e.vars.m }) : t(e.key, e.vars);
+}
+
+async function post(url, body) {
+  const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (r.status === 429) {
+    const j = await r.json().catch(() => ({}));
+    throw new UserError('rateLimited', { n: j.retryAfter || Number(r.headers.get('Retry-After')) || 60 });
+  }
+  return r;
+}
+
+// Only the keys that were typed in, for the key test (never stored by the page).
+function typedKeys() {
+  const p = {};
+  if (val('os_key')) p.opensubtitles = { apiKey: val('os_key'), username: val('os_user'), password: val('os_pass') };
+  if (val('subdl_key')) p.subdl = { apiKey: val('subdl_key') };
+  if (val('subsource_key')) p.subsource = { apiKey: val('subsource_key') };
+  return p;
+}
+
+// The AI keys, only the filled fields. Sent to /api/config as `ai` (nothing at all when both are empty, so such a link is unchanged).
+function aiKeys() {
+  const a = {};
+  if (val('deepl_key')) a.deepl = val('deepl_key');
+  if (val('gemini_key')) a.gemini = val('gemini_key');
+  return a;
+}
+
+f.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  lastError = null;
+  renderError();
+  const providers = typedKeys();
+  providers.greeksubs = { enabled: f.elements.gs.checked };
+
+  try {
+    const ai = aiKeys();
+    const r = await post('/api/config', { providers, maxResults: val('max'), ...(Object.keys(ai).length ? { ai } : {}) });
+    if (!r.ok) {
+      const bad = await r.json().catch(() => ({}));
+      if (bad.error === 'bad_ai_key') throw new UserError('badAiKey', { field: bad.field === 'gemini' ? 'Gemini' : 'DeepL' });
+      throw new UserError('rejected');
+    }
+    const j = await r.json();
+    $('manifest').value = j.manifestUrl;
+    $('install').href = j.stremioUrl;
+    const plainHttp = j.manifestUrl.startsWith('http://'); // BASE_URL decides; stremio:// installs need https
+    $('install').hidden = plainHttp;
+    $('localnote').hidden = !plainHttp;
+    const base = j.manifestUrl.replace(/\/manifest\.json$/, '');
+    document.querySelectorAll('#tests a').forEach((a) => { a.href = base + a.dataset.path; });
+    $('result').style.display = 'block';
+  } catch (err) {
+    lastError = err instanceof UserError
+      ? (err.key === 'rejected' ? { key: 'createFail', vars: { mKey: 'rejected' } } : { key: err.key, vars: err.vars })
+      : { key: 'createFail', vars: { m: err.message } };
+    renderError();
+  }
+});
+
+$('copy').addEventListener('click', async (e) => {
+  const box = $('manifest');
+  let label = t('copied');
+  try { await navigator.clipboard.writeText(box.value); }
+  catch { box.select(); label = t('pressCtrl'); } // clipboard API needs HTTPS or localhost
+  copyFlash = true;
+  e.target.textContent = label;
+  setTimeout(() => { copyFlash = false; e.target.textContent = t('copy'); }, 1500);
+});
+
+// ---------- "Test my keys" ----------
+const PNAME = { opensubtitles: 'OpenSubtitles', subdl: 'SubDL', subsource: 'SubSource', deepl: 'DeepL', gemini: 'Gemini' };
+let lastTest = null; // { results } | { message: i18n key, vars }
+
+function describe(id, r) {
+  switch (r.status) {
+    case 'ok': {
+      let text = t('okSimple');
+      if (id === 'opensubtitles') {
+        if (r.login === false) text = t('okNoLogin');
+        else if (Number.isFinite(r.remaining) && Number.isFinite(r.allowed)) text = t('okLeft', { n: r.remaining, total: r.allowed });
+        else text = t('okLogin');
+      }
+      if (id === 'deepl' && Number.isFinite(r.used) && Number.isFinite(r.limit)) text = t('okChars', { used: r.used.toLocaleString(lang), limit: r.limit.toLocaleString(lang) });
+      return { cls: 'ok', badge: t('stOk'), text };
+    }
+    case 'bad_key': return { cls: 'bad', badge: t('stBadKey'), text: t('badKey') };
+    case 'bad_login': return { cls: 'bad', badge: t('stBadLogin'), text: t('badLogin') };
+    case 'quota': return { cls: 'warn', badge: t('stQuota'), text: t(r.reason === 'daily' ? 'quotaDaily' : r.reason === 'monthly' ? 'quotaMonthly' : 'quotaRate') };
+    case 'limit': return { cls: 'warn', badge: t('stLimit'), text: t('limitMsg') };
+    default: return { cls: 'off', badge: t('stDown'), text: t('unreachable') };
+  }
+}
+
+function renderTest() {
+  const ul = $('testout');
+  ul.replaceChildren();
+  if (!lastTest) { ul.hidden = true; return; }
+  ul.hidden = false;
+  if (lastTest.message) {
+    const li = document.createElement('li');
+    li.className = 'testmsg';
+    li.textContent = t(lastTest.message, lastTest.vars);
+    ul.append(li);
+    return;
+  }
+  for (const [id, r] of Object.entries(lastTest.results)) {
+    const d = describe(id, r);
+    const li = document.createElement('li');
+    const name = document.createElement('span'); name.className = 'pname'; name.textContent = PNAME[id] || id;
+    const badge = document.createElement('span'); badge.className = 'badge ' + d.cls; badge.textContent = d.badge;
+    const text = document.createElement('span'); text.className = 'ptext'; text.textContent = d.text;
+    li.append(name, badge, text);
+    ul.append(li);
+  }
+}
+
+$('testkeys').addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
+  lastError = null;
+  renderError();
+  const providers = typedKeys();
+  const ai = aiKeys();
+  if (ai.deepl) providers.deepl = { apiKey: ai.deepl }; // the AI keys are tested through the same endpoint
+  if (ai.gemini) providers.gemini = { apiKey: ai.gemini };
+  if (!Object.keys(providers).length) { lastTest = { message: 'testNone' }; renderTest(); return; }
+  btn.disabled = true;
+  btn.textContent = t('testing');
+  try {
+    const r = await post('/api/test', { providers });
+    if (!r.ok) throw new Error('test failed');
+    lastTest = { results: (await r.json()).results || {} };
+  } catch (err) {
+    lastTest = err instanceof UserError ? { message: err.key, vars: err.vars } : { message: 'testFailed' };
+  } finally {
+    btn.disabled = false;
+    btn.textContent = t('testKeys');
+    renderTest();
+  }
+});
+
+applyLang();
+
+// "Test my keys" exists only when the server has it on (ENABLE_KEY_TEST); otherwise the button is hidden.
+fetch('/api/features').then((r) => r.json()).then((f) => {
+  if (f && f.keyTest === false) $('testkeys').style.display = 'none';
+}).catch(() => { /* keep the button: a failed test just shows its usual message */ });
+</script>
+<script>
+// ---------- motion only (look, not behaviour): hero cues, timeline strip, card reveal, link "render" bar ----------
+// Only opacity and transform change. Nothing runs with reduced motion, and everything pauses while the tab is hidden.
+(() => {
+  const root = document.documentElement;
+  const calm = matchMedia('(prefers-reduced-motion: reduce)');
+
+  // hero: the three cues take turns in the subtitle box, one every 3 s; the timecode follows
+  const cues = [...document.querySelectorAll('.player li')];
+  const time = document.querySelector('.tc .time');
+  const allTime = time.textContent;
+  let at = 0, timer = 0;
+  const show = (n) => { cues.forEach((c, k) => c.classList.toggle('on', k === n)); time.textContent = cues[n].dataset.tc; };
+  function play() {
+    if (timer || calm.matches || document.hidden) return;
+    root.classList.add('playing');
+    show(at);
+    timer = setInterval(() => { at = (at + 1) % cues.length; show(at); }, 3000);
+  }
+  function pause() { clearInterval(timer); timer = 0; }
+
+  // timeline strip: two identical runs of cue blocks, scrolled by half their width so the loop is seamless
+  const track = document.querySelector('.tl-track');
+  const W = [120, 64, 180, 90, 46, 150, 110, 72, 200, 58, 132, 96, 160, 80, 140, 70, 188, 52, 124, 100, 168, 60];
+  for (let run = 0; run < 2; run++) W.forEach((w, k) => { const b = document.createElement('i'); b.style.width = w + 'px'; if (k % 5 === 2) b.className = 'hi'; track.append(b); });
+
+  // cards: fade and rise into view as they scroll in, one after another
+  let io = null;
+  if (!calm.matches && 'IntersectionObserver' in window) {
+    root.classList.add('reveal');
+    io = new IntersectionObserver((entries) => {
+      entries.filter((e) => e.isIntersecting).forEach((e, k) => {
+        e.target.style.setProperty('--d', k * 90 + 'ms');
+        e.target.classList.add('in');
+        io.unobserve(e.target);
+      });
+    }, { threshold: 0.08 });
+    document.querySelectorAll('.cards fieldset').forEach((f) => io.observe(f));
+  }
+
+  // link created (the page script sets the install link's href): replay the render bar, then the final cue
+  const result = document.getElementById('result');
+  new MutationObserver(() => {
+    if (calm.matches) return;
+    result.classList.remove('play');
+    void result.offsetWidth; // restart the CSS animations
+    result.classList.add('play');
+  }).observe(document.getElementById('install'), { attributes: true, attributeFilter: ['href'] });
+
+  document.addEventListener('visibilitychange', () => {
+    root.classList.toggle('paused', document.hidden);
+    if (document.hidden) pause(); else play();
+  });
+  calm.addEventListener('change', () => {
+    if (!calm.matches) { play(); return; }
+    pause();
+    root.classList.remove('playing', 'reveal');
+    cues.forEach((c) => c.classList.remove('on'));
+    time.textContent = allTime;
+    io?.disconnect();
+  });
+  play();
+})();
+</script>
+</body>
+</html>

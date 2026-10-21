@@ -1,0 +1,7 @@
+node_modules
+.env
+cache/
+# raw third-party downloads used by optional tests; never commit them
+test/fixtures/**/*.zip
+test/fixtures/**/*.srt
+test/fixtures/**/*.bin

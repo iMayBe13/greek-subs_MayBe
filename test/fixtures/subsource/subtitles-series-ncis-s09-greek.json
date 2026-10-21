@@ -1,0 +1,56 @@
+{
+  "success": true,
+  "data": [
+    {
+      "subtitleId": 491433,
+      "movieId": 63030,
+      "language": "greek",
+      "releaseInfo": [
+        "NCIS.S09x03.The Penelope Papers.HDTV.XviD-LOL"
+      ],
+      "commentary": "",
+      "files": null,
+      "size": null,
+      "hearingImpaired": true,
+      "foreignParts": false,
+      "framerate": null,
+      "productionType": null,
+      "releaseType": null,
+      "downloads": 1,
+      "comments": 0,
+      "rating": {
+        "good": 0,
+        "bad": 0,
+        "total": 0
+      },
+      "preview": "[redacted]",
+      "uploaderId": 591711,
+      "contributors": [
+        {
+          "id": 591711,
+          "displayname": "[redacted]"
+        }
+      ],
+      "link": "/subtitle/ncis-season-9/greek/491433",
+      "createdAt": "2011-10-13T15:55:00.000Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 100,
+    "total": 1,
+    "pages": 1
+  },
+  "filters": {
+    "movieId": 63030,
+    "language": "greek",
+    "productionType": null,
+    "releaseType": null,
+    "uploader": null,
+    "hearingImpaired": null,
+    "foreignParts": null,
+    "framerate": null,
+    "releaseInfo": null,
+    "sort": "popular"
+  }
+}

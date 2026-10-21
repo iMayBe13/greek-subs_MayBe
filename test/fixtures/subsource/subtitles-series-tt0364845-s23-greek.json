@@ -1,0 +1,22 @@
+{
+  "success": true,
+  "data": [],
+  "pagination": {
+    "page": 1,
+    "limit": 100,
+    "total": 0,
+    "pages": 0
+  },
+  "filters": {
+    "movieId": 153284,
+    "language": "greek",
+    "productionType": null,
+    "releaseType": null,
+    "uploader": null,
+    "hearingImpaired": null,
+    "foreignParts": null,
+    "framerate": null,
+    "releaseInfo": null,
+    "sort": "popular"
+  }
+}

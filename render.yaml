@@ -1,0 +1,26 @@
+# Render blueprint: one free Node web service. Nothing secret lives in this file.
+# When you create the service from this file, Render asks you for the two values marked sync: false.
+services:
+  - type: web
+    name: greek-subs
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      # Long random string (32+ chars). Encrypts every install link. Keep it stable: changing it breaks all existing links.
+      - key: SECRET
+        sync: false
+      # Public https URL of this service, e.g. https://greek-subs.onrender.com (no trailing slash).
+      # If left empty the app falls back to RENDER_EXTERNAL_URL, which Render sets itself.
+      - key: BASE_URL
+        sync: false
+      # Cloudflare KV for AI translations (optional; set all three or none, otherwise AI results are kept on the disk).
+      # The API token needs the Workers KV Storage permission with write access. Never commit these values.
+      - key: CLOUDFLARE_ACCOUNT_ID
+        sync: false
+      - key: CLOUDFLARE_KV_NAMESPACE_ID
+        sync: false
+      - key: CLOUDFLARE_API_TOKEN
+        sync: false
